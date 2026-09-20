@@ -1,0 +1,55 @@
+{
+  "frame_rows": 10,
+  "iterations": 5,
+  "original_fit_per_request": {
+    "n": 2,
+    "min_ms": 11767.1,
+    "p50_ms": 13021.1,
+    "p95_ms": 14275.2,
+    "max_ms": 14275.2,
+    "mean_ms": 13021.1
+  },
+  "live_no_cache": {
+    "n": 5,
+    "min_ms": 1023.8,
+    "p50_ms": 1125.1,
+    "p95_ms": 2049.9,
+    "max_ms": 2049.9,
+    "mean_ms": 1290.3
+  },
+  "live_fit_seconds": 13.21,
+  "live": {
+    "n": 5,
+    "min_ms": 948.6,
+    "p50_ms": 1026.1,
+    "p95_ms": 3478.9,
+    "max_ms": 3478.9,
+    "mean_ms": 1555.5
+  },
+  "surrogate": {
+    "n": 50,
+    "min_ms": 2.1,
+    "p50_ms": 2.3,
+    "p95_ms": 4.6,
+    "max_ms": 6.0,
+    "mean_ms": 2.5
+  },
+  "surrogate_fidelity": {
+    "payout_mae_vs_teacher": 4.46,
+    "payout_mape_vs_teacher": 0.0741,
+    "payout_spearman_vs_teacher": 0.9932,
+    "rank_top1_agreement": 0.9792,
+    "rank_top3_overlap": 0.9995,
+    "rank_kendall_tau_mean": 0.9939,
+    "rank_top1_expected_payout_loss_pct": 0.052,
+    "rank_users_evaluated": 625
+  },
+  "stub": {
+    "n": 50,
+    "min_ms": 0.7,
+    "p50_ms": 0.7,
+    "p95_ms": 0.8,
+    "max_ms": 1.3,
+    "mean_ms": 0.8
+  }
+}

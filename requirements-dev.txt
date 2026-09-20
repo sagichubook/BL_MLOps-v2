@@ -1,0 +1,15 @@
+-r requirements.txt
+
+# Build-time only: distilled into assets/name_gender_index.json.gz by
+# scripts/build_name_index.py, and never imported at runtime.
+names-dataset==3.3.1
+
+# Validates databricks/ against Databricks' own API models
+# (tests/unit/test_databricks_bundle.py). Never imported at runtime.
+databricks-sdk==0.140.0
+
+pytest==9.0.1
+pytest-cov==7.1.0
+ruff==0.16.8
+mypy==1.17.1
+pyyaml==6.0.3

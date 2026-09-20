@@ -1,0 +1,18 @@
+# Runtime dependencies. requirements.lock.txt pins the resolved transitive
+# set; install from that for a reproducible environment.
+#
+# names-dataset is deliberately NOT here: it is a 54 MB build-time dependency
+# of scripts/build_name_index.py, and the committed index replaces it at
+# runtime (see src/bl_ranking/name_index.py). It lives in requirements-dev.txt.
+pandas==2.3.3
+numpy==2.5.3
+scikit-learn==1.9.0
+catboost==1.2.10
+joblib==1.6.0
+tabpfn-client==0.6.0
+mlflow-skinny==3.16.1
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+pydantic==2.13.4
+pydantic-settings==2.15.0
+python-dotenv==1.2.3

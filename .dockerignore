@@ -1,0 +1,39 @@
+# Keeps `docker build`'s context small and secret-free. None of these are
+# COPYed into any image (each Dockerfile copies only the specific
+# directories it needs), but without this file the daemon still has to
+# read and transmit all of them as part of the build context on every
+# build — confirmed: 1.79GB sent (mostly .venv/ + mlruns/ + data/) with
+# this file absent, vs. a few MB of actual source for what gets copied.
+.venv/
+.venv-loadtest/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+.git/
+.github/
+
+data/
+artifacts/
+mlruns/
+mlartifacts/
+predictors/
+reports/
+logs/
+*.log
+*.db
+
+.env
+*.token
+
+docs/
+tests/
+schedule/
+databricks/
+.backup-prior-run/
+README.md
+
+# NOTE: assets/ is deliberately NOT ignored — Dockerfile.serve and
+# Dockerfile.train COPY the name index from it (see tests/unit/test_deployment_config.py).

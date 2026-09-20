@@ -1,0 +1,43 @@
+resources:
+  # Registered model in Unity Catalog. The champion/previous aliases the
+  # training pipeline sets are UC aliases here — the rollback procedure
+  # (scripts/rollback.py) is unchanged, it just talks to a different registry.
+  registered_models:
+    bl_lead_classifier:
+      name: bl_lead_classifier
+      catalog_name: ${var.catalog}
+      schema_name: ${var.schema}
+      comment: >
+        CatBoost P(lead) classifier. The payout leg (TabPFN cache reference,
+        distilled surrogate, historical fallback table) is logged as artifacts
+        of the same run, so one alias move rolls the whole serving bundle back.
+
+  model_serving_endpoints:
+    bl-ranking-predict:
+      name: bl-ranking-predict-${bundle.target}
+      config:
+        served_entities:
+          - entity_name: ${var.catalog}.${var.schema}.bl_lead_classifier
+            entity_version: "1"
+            workload_size: Small
+            # False: this is a synchronous, user-facing path. Scale-to-zero
+            # trades a cold start of tens of seconds for idle savings, and
+            # the user is already waiting on the landing page.
+            scale_to_zero_enabled: false
+            environment_vars:
+              TABPFN_TOKEN: "{{secrets/${var.secret_scope}/tabpfn_token}}"
+              # Default to the local surrogate: the hosted path measures
+              # 3,000 ms p50 end to end at a single user, and is flat in batch
+              # size, so no amount of endpoint scaling improves it.
+              # See docs/part2.md.
+              TABPFN_TRANSPORT: surrogate
+              MLFLOW_TRACKING_URI: databricks
+              MLFLOW_REGISTRY_URI: databricks-uc
+              MLFLOW_REGISTRY_MODEL_NAME_CLASSIFIER: ${var.catalog}.${var.schema}.bl_lead_classifier
+        traffic_config:
+          routes:
+            - served_model_name: bl_lead_classifier-1
+              traffic_percentage: 100
+      tags:
+        - key: project
+          value: bl_ranking

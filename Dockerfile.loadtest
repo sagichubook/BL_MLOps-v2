@@ -1,0 +1,17 @@
+# Separate image: locust pins requests<2.32.5, which conflicts with
+# tabpfn-client's requests>=2.32.5. The generator only speaks HTTP to the
+# running API, so it never needs the app's dependencies.
+FROM python:3.14-slim
+
+WORKDIR /app
+
+ENV PYTHONUNBUFFERED=1 TZ=UTC
+
+COPY requirements-loadtest.txt .
+RUN pip install --no-cache-dir -r requirements-loadtest.txt
+
+COPY loadtest/ loadtest/
+
+EXPOSE 8089
+
+ENTRYPOINT ["locust", "-f", "loadtest/locustfile.py"]

@@ -1,0 +1,140 @@
+services:
+  mlflow:
+    image: python:3.14-slim
+    working_dir: /mlflow
+    # --default-artifact-root must be the mlflow-artifacts:/ proxy scheme,
+    # not a plain path. With a plain local path, clients resolve a run's
+    # artifact_uri to that literal path and read/write it on their OWN
+    # filesystem via LocalArtifactRepository, bypassing this server's HTTP
+    # API entirely regardless of --serve-artifacts. That is invisible in any
+    # single-filesystem run and fatal here: `train` and `serve` don't share a
+    # filesystem, so train's log_artifact() would write into its own
+    # container's disk and serve's download_artifacts() would find nothing.
+    # --artifacts-destination is where the proxy persists to.
+    # One line on purpose. With a folded block, YAML keeps *more-indented*
+    # continuation lines literal, so each flag below the first became its own
+    # shell command: the server came up with no artifact root, no
+    # --serve-artifacts and bound to 127.0.0.1, and nothing complained.
+    command:
+      - bash
+      - -c
+      - >-
+        pip install --no-cache-dir mlflow==3.16.1 &&
+        exec mlflow server --backend-store-uri sqlite:////mlflow/data/mlflow.db
+        --default-artifact-root mlflow-artifacts:/
+        --artifacts-destination /mlflow/artifacts
+        --serve-artifacts --host 0.0.0.0 --port 5000
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow/data
+      - mlflow_artifacts:/mlflow/artifacts
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # One-shot training. `docker compose --profile train run --rm train`
+  train:
+    build: &app_build
+      context: .
+      dockerfile: Dockerfile
+      target: train
+      # The default bridge in a rootless daemon may have no DNS; the pip layer
+      # is the only step that needs a network at all.
+      network: host
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      TABPFN_TOKEN: ${TABPFN_TOKEN:-}
+      DATA_PATH: /app/data/raw/
+      ARTIFACTS_PATH: /app/artifacts/
+      TZ: UTC
+    volumes:
+      - ./data:/app/data:ro
+      - artifacts_data:/app/artifacts
+    profiles: ["train"]
+
+  # The weekly schedule as a long-running service, so "Sunday 05:00 UTC" is
+  # something the stack actually does rather than a crontab a reader is
+  # expected to install. TZ is pinned because the whole point is a fixed
+  # wall-clock instant.
+  scheduler:
+    build: *app_build
+    entrypoint: ["python", "-m", "bl_ranking.scheduler"]
+    command: []
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      TABPFN_TOKEN: ${TABPFN_TOKEN:-}
+      DATA_PATH: /app/data/raw/
+      ARTIFACTS_PATH: /app/artifacts/
+      TZ: UTC
+    volumes:
+      - ./data:/app/data:ro
+      - artifacts_data:/app/artifacts
+    restart: unless-stopped
+
+  serve:
+    build:
+      <<: *app_build
+      target: serve
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      TABPFN_TOKEN: ${TABPFN_TOKEN:-}
+      # surrogate by default. Measured end to end at one user: 53 ms with the
+      # surrogate against 3,000 ms on the hosted path, and hosted latency is
+      # flat in batch size, so no arrangement of that call reaches a page-load
+      # budget. Set TABPFN_TRANSPORT=live for exact hosted behaviour.
+      # See docs/part2.md.
+      TABPFN_TRANSPORT: ${TABPFN_TRANSPORT:-surrogate}
+      ARTIFACTS_PATH: /app/artifacts/
+      SERVING_ARTIFACT_SOURCE: registry
+      API_KEY: ${API_KEY:-}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+      TZ: UTC
+    volumes:
+      - artifacts_data:/app/artifacts
+    healthcheck:
+      # /ready, not /health: /health only proves the process answers HTTP,
+      # while /ready proves artifacts loaded and the startup canary produced
+      # a real prediction. Only the latter should take traffic.
+      test: ["CMD", "python", "-c", "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/ready', timeout=4).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  loadtest:
+    build:
+      context: .
+      dockerfile: Dockerfile.loadtest
+      network: host
+    depends_on:
+      - serve
+    ports:
+      - "8089:8089"
+    environment:
+      # Locust reads --host from LOCUST_HOST (its own LOCUST_<FLAG>
+      # convention). A plain TARGET_HOST is never read by locust at all and
+      # silently does nothing.
+      LOCUST_HOST: http://serve:8000
+    profiles: ["loadtest"]
+
+volumes:
+  mlflow_data:
+  mlflow_artifacts:
+  artifacts_data:

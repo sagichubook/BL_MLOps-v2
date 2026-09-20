@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bl_ranking"
+version = "1.1.0"
+description = "Business Loans brand-ranking: MLflow training pipeline and synchronous ranking API"
+requires-python = ">=3.12"
+dynamic = ["dependencies"]
+
+# Console scripts double as the Databricks python_wheel_task entry points
+# (see databricks/resources/bl_ranking_job.yml), so the weekly job on
+# Databricks runs byte-identical code to `python scripts/train.py` locally.
+[project.scripts]
+bl-ranking-train = "bl_ranking.train_pipeline:main"
+bl-ranking-serve = "bl_ranking.serve_cli:main"
+bl-ranking-rollback = "bl_ranking.rollback:main"
+bl-ranking-schedule = "bl_ranking.scheduler:main"
+
+[project.entry-points."bl_ranking.tasks"]
+train = "bl_ranking.train_pipeline:main"
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["bl_ranking*"]
+
+[tool.setuptools.package-data]
+bl_ranking = []
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["tests"]
+addopts = "--cov=src/bl_ranking --cov-report=term-missing --cov-report=html"
+
+[tool.coverage.run]
+source = ["src/bl_ranking"]
+omit = ["src/bl_ranking/original/*"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 70
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+# Vendored, byte-for-byte-unchanged originals — never linted or reformatted.
+extend-exclude = ["src/bl_ranking/original"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B", "UP"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]

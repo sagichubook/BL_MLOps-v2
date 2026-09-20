@@ -1,0 +1,27 @@
+# Data & PII — never commit (reports/*.csv, load-test output, is fine — no PII in it)
+data/
+
+# Secrets
+.env
+*.token
+
+# Python
+.venv/
+.venv-loadtest/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Model artifacts / MLflow / logs (reproducible from data + code, not source-controlled)
+artifacts/
+mlruns/
+mlartifacts/
+predictors/
+logs/
+*.log
+*.db
+
+# OS
+.DS_Store

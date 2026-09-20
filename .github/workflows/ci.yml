@@ -1,0 +1,35 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # 3.14 is what the images run; 3.12 is the floor pyproject declares.
+      # Both are tested so neither claim is an assumption.
+      matrix:
+        python-version: ["3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - run: pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Unit + contract tests
+        run: pytest tests/unit tests/contract -q
+
+      # Parity and smoke drive the vendored fit_(), which calls the hosted
+      # TabPFN API unconditionally. They run only when the secret is set, and
+      # skip rather than fail otherwise.
+      - name: Parity + smoke tests
+        env:
+          TABPFN_TOKEN: ${{ secrets.TABPFN_TOKEN }}
+        run: pytest tests/parity tests/smoke -q

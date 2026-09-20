@@ -1,0 +1,76 @@
+resources:
+  jobs:
+    bl_ranking_weekly_train:
+      name: "[${bundle.target}] BL brand ranking — weekly production train"
+
+      # Sunday 05:00 UTC. timezone_id is explicit rather than inherited:
+      # a schedule that silently follows the workspace's local timezone
+      # drifts by an hour twice a year and nobody notices until a model is
+      # trained on a different window than the dashboards assume.
+      schedule:
+        quartz_cron_expression: "0 0 5 ? * SUN"
+        timezone_id: UTC
+        pause_status: ${var.schedule_pause_status}
+
+      # A weekly job that silently stops is indistinguishable from a healthy
+      # one until serving goes stale, so failure and prolonged runtime both
+      # have to page someone.
+      email_notifications:
+        on_failure:
+          - ${workspace.current_user.userName}
+      health:
+        rules:
+          - metric: RUN_DURATION_SECONDS
+            op: GREATER_THAN
+            value: 5400
+      timeout_seconds: 10800
+      max_concurrent_runs: 1
+
+      job_clusters:
+        - job_cluster_key: bl_ranking_cluster
+          new_cluster:
+            spark_version: 15.4.x-cpu-ml-scala2.12
+            node_type_id: ${var.node_type}
+            num_workers: 0
+            # Single node: the pipeline is pandas/CatBoost on one machine,
+            # not Spark. Spinning up workers would cost money and do nothing.
+            spark_conf:
+              spark.databricks.cluster.profile: singleNode
+              spark.master: "local[*]"
+            custom_tags:
+              ResourceClass: SingleNode
+              project: bl_ranking
+            data_security_mode: SINGLE_USER
+
+      tasks:
+        - task_key: train_production
+          job_cluster_key: bl_ranking_cluster
+          python_wheel_task:
+            package_name: bl_ranking
+            entry_point: bl-ranking-train
+            parameters:
+              - "--mode"
+              - "production"
+              - "--input-path"
+              - "/Volumes/${var.catalog}/${var.schema}/raw/"
+              - "--output-path"
+              - "/Volumes/${var.catalog}/${var.schema}/artifacts/"
+          libraries:
+            - whl: ../dist/*.whl
+          environment_key: default
+
+      environments:
+        - environment_key: default
+          spec:
+            client: "1"
+            dependencies:
+              - ../dist/*.whl
+
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+
+variables:
+  schedule_pause_status:
+    description: UNPAUSED in prod; PAUSED in dev so a personal deploy never trains on its own
+    default: PAUSED

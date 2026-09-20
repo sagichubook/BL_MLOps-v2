@@ -1,0 +1,14 @@
+# Weekly production training — Sunday 05:00 UTC.
+#
+# Prefer the `scheduler` service in docker-compose.yml or the Databricks
+# schedule: both pin the timezone explicitly. CRON_TZ below is honoured by
+# cronie and Vixie cron, and silently ignored by some minimal and non-Linux
+# daemons, which run in system-local time instead. If `crontab -l` does not
+# show the CRON_TZ line after installing, set the system timezone to UTC.
+#
+# Install:  crontab schedule/crontab.example   (edit REPO_DIR first)
+
+REPO_DIR=/path/to/bl-ranking-mlops
+CRON_TZ=UTC
+
+0 5 * * 0 cd $REPO_DIR && /usr/bin/docker compose --profile train run --rm train --mode production >> logs/cron_train.log 2>&1

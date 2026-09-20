@@ -1,0 +1,64 @@
+# Databricks Asset Bundle for the BL brand-ranking system.
+#
+# The same code that runs locally runs here: the weekly job invokes the
+# `bl-ranking-train` console script from the wheel built out of this repo
+# (pyproject.toml [project.scripts]), so there is no Databricks-only copy of
+# the pipeline to drift out of sync.
+#
+#   databricks bundle validate -t dev
+#   databricks bundle deploy   -t prod
+#   databricks bundle run bl_ranking_weekly_train -t prod
+#
+# What changes between local and Databricks is configuration only:
+#   MLFLOW_TRACKING_URI   sqlite:///mlruns.db -> databricks
+#   MLFLOW_REGISTRY_URI   (unset)             -> databricks-uc
+#   model name            bl_lead_classifier  -> <catalog>.<schema>.bl_lead_classifier
+#   DATA_PATH/ARTIFACTS_PATH  local dirs      -> Unity Catalog Volumes
+#   TABPFN_TOKEN          .env                -> Databricks secret scope
+bundle:
+  name: bl_ranking
+
+include:
+  - resources/*.yml
+
+artifacts:
+  bl_ranking_wheel:
+    type: whl
+    build: python -m build --wheel
+    path: ../
+
+variables:
+  catalog:
+    description: Unity Catalog catalog holding the registered model and volumes
+    default: main
+  schema:
+    description: UC schema for this project
+    default: bl_ranking
+  secret_scope:
+    description: Databricks secret scope holding the TabPFN token
+    default: bl_ranking
+  node_type:
+    description: Worker/driver node type for the job cluster
+    default: r5d.xlarge
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: ${workspace.host}
+    variables:
+      catalog: main
+      schema: bl_ranking_dev
+
+  prod:
+    mode: production
+    workspace:
+      host: ${workspace.host}
+      root_path: /Shared/.bundle/${bundle.name}/${bundle.target}
+    permissions:
+      - level: CAN_VIEW
+        group_name: users
+    variables:
+      catalog: main
+      schema: bl_ranking

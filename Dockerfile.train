@@ -1,0 +1,29 @@
+# Python 3.14: the interpreter every measurement, test and lock in this repo
+# was produced on. CI additionally proves 3.12, the floor pyproject declares.
+# `git` is installed so MLflow runs record a real commit SHA instead of
+# "unknown" — provenance is the point of logging it at all.
+FROM python:3.14-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential git \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY src/ src/
+COPY scripts/ scripts/
+# The compact name index. Without it the vendored scripts fall back to the
+# real names_dataset and every process costs ~1.9 GB of RSS and ~6 s of
+# startup, so this COPY is load-bearing, not a convenience.
+COPY assets/ assets/
+COPY pyproject.toml .
+
+ENV PYTHONPATH=/app/src \
+    PYTHONUNBUFFERED=1 \
+    TZ=UTC \
+    BL_REQUIRE_NAME_INDEX=1
+
+ENTRYPOINT ["python", "scripts/train.py"]
+CMD ["--mode", "production"]
