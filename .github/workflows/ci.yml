@@ -30,6 +30,7 @@ jobs:
       # TabPFN API unconditionally. They run only when the secret is set, and
       # skip rather than fail otherwise.
       - name: Parity + smoke tests
+        if: env.TABPFN_TOKEN != ''
         env:
           TABPFN_TOKEN: ${{ secrets.TABPFN_TOKEN }}
         run: pytest tests/parity tests/smoke -q
