@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, datetime, timedelta
-from unittest.mock import patch
 
 import pytest
 import yaml
@@ -71,7 +70,10 @@ def test_loop_sleeps_until_the_slot_and_does_not_double_fire(monkeypatch):
     # run_forever loops forever, so we need to limit it.
     # Override the while condition by raising after 2 runs.
     call_count = {"n": 0}
-    original_run_once = lambda: (ran.append(1), setattr(call_count, "n", call_count["n"] + 1))
+
+    def original_run_once():
+        ran.append(1)
+        call_count["n"] += 1
 
     def guarded_run_once():
         original_run_once()
