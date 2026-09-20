@@ -59,11 +59,8 @@ def test_loop_sleeps_until_the_slot_and_does_not_double_fire(monkeypatch):
     def fake_now(tz=UTC):
         return clock["now"]
 
-    # Patch run_forever's internals: time.sleep, datetime.now, and run_once.
-    # We call run_forever in a loop ourselves to control iteration count.
     monkeypatch.setattr("bl_ranking.scheduler.time.sleep", fake_sleep)
-    monkeypatch.setattr("bl_ranking.scheduler.datetime.now", fake_now)
-    monkeypatch.setattr("bl_ranking.scheduler.run_once", lambda: ran.append(1))
+    monkeypatch.setattr("bl_ranking.scheduler._now", fake_now)
 
     from bl_ranking.scheduler import run_forever
 

@@ -20,6 +20,10 @@ DEFAULT_HOUR = 5
 DEFAULT_MINUTE = 0
 
 
+def _now(tz=UTC) -> datetime:
+    return datetime.now(tz)
+
+
 def next_run_at(
     after: datetime,
     weekday: int = SUNDAY,
@@ -65,7 +69,7 @@ def run_once() -> str | None:
 def run_forever(weekday: int = SUNDAY, hour: int = DEFAULT_HOUR, minute: int = DEFAULT_MINUTE) -> None:
     """Sleep until each Sunday 05:00 occurrence, run, repeat."""
     while True:
-        current = datetime.now(UTC)
+        current = _now(UTC)
         target = next_run_at(current, weekday, hour, minute)
         wait_s = max(0.0, (target - current).total_seconds())
         logger.info(

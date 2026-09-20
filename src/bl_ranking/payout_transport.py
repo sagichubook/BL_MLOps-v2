@@ -184,11 +184,11 @@ class StubPayoutRegressor:
         return self
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
-        digest = hashlib.sha256(
-            pd.util.hash_pandas_object(X, index=False).values.tobytes()
-        ).digest()
-        raw = int.from_bytes(digest[:4], "big")
-        return np.full(len(X), 1.0 + (raw % 29900) / 100.0)
+        hashed = pd.util.hash_pandas_object(X, index=False).values
+        digests = np.array(
+            [int.from_bytes(hashlib.sha256(row.tobytes()).digest()[:4], "big") for row in hashed]
+        )
+        return 1.0 + (digests % 29900) / 100.0
 
 
 # ==========================================================================
