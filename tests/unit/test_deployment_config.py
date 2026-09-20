@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import re
 
+import pytest
 import yaml
 
 from bl_ranking import REPO_ROOT
@@ -259,6 +260,7 @@ def test_env_file_is_ignored_and_untracked():
     """.env holds a real TABPFN_TOKEN during development. Gitignoring it is not
     enough on its own — this asserts git agrees, and that no past commit
     slipped it into the index."""
+    pytest.importorskip("dulwich")
     from dulwich.ignore import IgnoreFilterManager
     from dulwich.repo import Repo
 
@@ -275,6 +277,7 @@ def test_env_file_is_ignored_and_untracked():
 
 def test_no_secret_shaped_values_are_tracked():
     """A token pasted into a tracked config file is the failure this guards."""
+    pytest.importorskip("dulwich")
     from dulwich.repo import Repo
 
     repo = Repo(str(REPO_ROOT))

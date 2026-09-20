@@ -14,10 +14,29 @@ registration as a fatal error.
 """
 from __future__ import annotations
 
+import pytest
 from catboost import CatBoostClassifier
 
 from bl_ranking.config import Settings
 from bl_ranking.train_pipeline import _register_and_alias
+
+
+def _sqlite_registry_supported() -> bool:
+    try:
+        import mlflow
+        mlflow.set_tracking_uri("sqlite:///:memory:")
+        from mlflow.tracking import MlflowClient
+        client = MlflowClient()
+        client.get_registered_model("___probe___")
+        return True
+    except Exception:
+        return False
+
+
+pytestmark = pytest.mark.skipif(
+    not _sqlite_registry_supported(),
+    reason="mlflow-skinny does not support sqlite model registry",
+)
 
 
 def _tiny_cbm(path) -> None:
